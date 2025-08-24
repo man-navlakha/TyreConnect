@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 export default function Login({ onLogin }) {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -13,6 +14,7 @@ export default function Login({ onLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
     try {
       const response = await fetch("http://127.0.0.1:8000/api-token-auth/", {
@@ -24,14 +26,22 @@ export default function Login({ onLogin }) {
       if (response.ok) {
         const data = await response.json();
         onLogin(data.token);
-        navigate("/");
+        navigate("/dashboard"); // or wherever makes sense
       } else {
-        const data = await response.json();
-        setError("Invalid username or password");
+        let message = "Invalid username or password";
+        try {
+          const data = await response.json();
+          if (data?.non_field_errors?.length) {
+            message = data.non_field_errors[0];
+          }
+        } catch {}
+        setError(message);
       }
     } catch (err) {
+      console.error(err);
       setError("Something went wrong!");
-      console.log(err)
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,9 +69,14 @@ export default function Login({ onLogin }) {
           />
           <button
             type="submit"
-            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white p-3 rounded-xl font-semibold"
+            disabled={loading}
+            className={`w-full p-3 rounded-xl font-semibold ${
+              loading
+                ? "bg-indigo-300 cursor-not-allowed"
+                : "bg-indigo-500 hover:bg-indigo-600 text-white"
+            }`}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
       </div>
